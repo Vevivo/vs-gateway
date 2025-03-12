@@ -1,0 +1,119 @@
+Kullanılacak Kaynaklar ve Teknolojiler
+AR.IO WayFinder Reposu:
+
+Kaynak: https://github.com/ar-io/wayfinder.git
+Bu repo, gateway seçimi, verilerin çekilmesi ve yönlendirme gibi işlevleri içeriyor. Mevcut kod yapısını bozmadan, dashboard kısmını aynı repoya entegre etmek hedefleniyor.
+AR.IO SDK:
+
+Kaynak: https://github.com/ar-io/ar-io-sdk.git
+Bu SDK, AR.IO ekosistemindeki gateway’ler, ArNS, AO gibi işlemleri gerçekleştirmek için gerekli fonksiyonları sağlıyor.
+Özellikle, web ortamı için @ar.io/sdk/web modülü kullanılacak; bu modül, ARIO.init() ve getGateways() gibi fonksiyonlarla gateway verilerini çekmeyi mümkün kılıyor.
+Web Teknolojileri:
+
+HTML, CSS, JavaScript: Dashboard sayfası için temel yapı.
+Modül Sistemi: ES Modules (örneğin, <script type="module">) kullanılarak, AR.IO SDK’nın CDN üzerinden (örn. unpkg) veya yerel olarak import edilmesi sağlanacak.
+Bundler veya Yerel Sunucu: Geliştirme aşamasında VS Code’un Live Server eklentisi veya http-server gibi araçlar kullanılabilir.
+Content Security Policy (CSP):
+
+Geliştirme aşamasında CSP kısıtlamaları gevşetilecek (örn. 'unsafe-inline' ve 'unsafe-eval') böylece modül import ve canlı yeniden yükleme (live reload) işlemleri çalışır hale getirilecek.
+Üretim ortamında bu ayarlar daha güvenli hale getirilecektir.
+Proje Hedefleri ve Fonksiyonellik
+Gateway Verilerinin Çekilmesi:
+
+AR.IO SDK’nın web sürümünden ARIO.init() ile bir client başlatılacak.
+getGateways({ limit, sortBy, sortOrder }) gibi fonksiyonlar kullanılarak, gerçek gateway verileri çekilecek.
+Gateway verileri arasında; gateway adresi, FQDN, durum, operator stake ve toplam delegated stake bilgileri yer alacak.
+Dashboard Tasarımı:
+
+Basit ve temiz bir HTML sayfası (örneğin, dashboard.html) oluşturulacak.
+CSS kullanılarak temel stil verilecek; her bir gateway verisi, görsel olarak ayırt edilebilir kutular (div) içinde listelenecek.
+JavaScript (dashboard.js) modülü ile sayfa yüklendiğinde veriler çekilecek ve DOM içine yerleştirilecek.
+Veri Görselleştirme:
+
+Çekilen gateway verileri, kullanıcıya okunabilir ve anlaşılır şekilde sunulacak.
+İlerleyen aşamalarda grafikler veya tablolar eklenerek performans, stake dağılımı gibi metriklerin görselleştirilmesi sağlanabilir.
+Test ve Geliştirme Süreci:
+
+İlk aşamada, AR.IO SDK’nın CDN üzerinden import edilerek canlı veriler çekilmeye çalışılacak.
+Eğer gerçek veriler çekilemezse, geçici olarak test verileri (örneğin, localStorage’a manuel eklenen örnek veriler) kullanılacak.
+Tarayıcı konsolundan loglar incelenecek ve hata mesajları üzerinden debugging yapılacak.
+Örnek Kod Parçaları
+dashboard.html
+
+html
+Kodu kopyala
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gateway Dashboard</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .gateway-item { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Gateway Sağlık Dashboard</h1>
+  <div id="gateway-list"></div>
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>
+dashboard.js
+
+js
+Kodu kopyala
+// dashboard.js
+console.log('dashboard.js loaded');
+
+import { ARIO } from 'https://unpkg.com/@ar.io/sdk/web?module';
+
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const ario = ARIO.init();
+    console.log('ARIO client initialized:', ario);
+    
+    const gatewaysData = await ario.getGateways({ limit: 100, sortBy: 'operatorStake', sortOrder: 'desc' });
+    console.log('Gateways data:', gatewaysData);
+    
+    const gateways = gatewaysData.items || gatewaysData;
+    
+    const listContainer = document.getElementById('gateway-list');
+    listContainer.innerHTML = '';
+
+    if (!gateways || gateways.length === 0) {
+      listContainer.innerHTML = '<p>Hiç gateway bulunamadı.</p>';
+      return;
+    }
+
+    gateways.forEach((gateway) => {
+      const item = document.createElement('div');
+      item.className = 'gateway-item';
+      item.innerHTML = `
+        <strong>Gateway Adresi:</strong> ${gateway.address || 'Bilinmiyor'} <br>
+        <strong>FQDN:</strong> ${gateway.settings?.fqdn || 'Bilinmiyor'} <br>
+        <strong>Durum:</strong> ${gateway.status || 'Bilinmiyor'} <br>
+        <strong>Operator Stake:</strong> ${gateway.operatorStake || 0} <br>
+        <strong>Total Delegated Stake:</strong> ${gateway.totalDelegatedStake || 0}
+      `;
+      listContainer.appendChild(item);
+    });
+  } catch (error) {
+    console.error('Dashboard hatası:', error);
+    document.getElementById('gateway-list').innerHTML = '<p>Veriler çekilirken hata oluştu.</p>';
+  }
+});
+Projenin Çalışma Şekli
+Geliştirme Aşaması:
+VS Code'da Replit veya Live Server kullanarak dashboard.html dosyasını açın.
+Tarayıcıda sayfa yüklendiğinde, AR.IO SDK üzerinden gateway verileri çekilir ve dashboard.js, bu verileri "gateway-list" div'ine ekler.
+
+Sorun Giderme:
+Eğer veri çekme veya modül import hataları alırsanız, tarayıcı konsolundaki hata mesajlarını inceleyin.
+Gerekirse, Live Server ayarlarında "liveServer.settings.NoBrowserCSP": true gibi CSP ayarlarını devre dışı bırakın veya alternatif bir yerel sunucu kullanın.
+
+Gelecekteki Geliştirmeler:
+
+Grafikler ve detaylı performans analizi eklenebilir.
+API yanıtlarını daha iyi işlemek için pagination veya filtreleme mekanizmaları entegre edilebilir.
